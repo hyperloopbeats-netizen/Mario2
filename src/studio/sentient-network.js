@@ -490,9 +490,10 @@ export class SentientDesignNetwork {
   }
 
   pushCadAssembly(asm, titanClass = null) {
-    if (this.cadApp) this.cadApp.loadAssembly(asm);
-    if (this.matrixEngine) this.matrixEngine.setCadAssembly(asm);
+    if (this.cadApp && typeof this.cadApp.setAssembly === 'function') this.cadApp.setAssembly(asm);
+    if (this.matrixEngine && typeof this.matrixEngine.setCadAssembly === 'function') this.matrixEngine.setCadAssembly(asm);
     this.titanfallGame?.syncFromOS();
+    this.fortressGame?.setCenterMonument?.(asm);
     this.fortressGame?.syncFromOS();
     if (titanClass && this.titanfallGame) {
       this.titanfallGame.setTitanClass(titanClass);
@@ -503,8 +504,8 @@ export class SentientDesignNetwork {
 
   applyGravityAcrossGames(g) {
     if (this.titanfallGame) this.titanfallGame.gravity = g;
-    if (this.fortressGame) this.fortressGame.gravity = g;
-    if (this.deps.marioEngine) this.deps.marioEngine.gravity = g + 10;
+    if (this.fortressGame) this.fortressGame.worldGravity = g;
+    if (this.deps.marioEngine?.config) this.deps.marioEngine.config.gravity = g + 10;
     daemonSupervisor.broadcastBlueprint('SentientPhysicsKernel', { gravity: g });
   }
 

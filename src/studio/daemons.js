@@ -286,40 +286,46 @@ export class DaemonSupervisor {
         name: 'Internal Hyper-Awareness Matrix',
         desc: 'Live cross-game state graph linking Mario, TF3D, Titanfall 2 & CAD',
         enabled: true,
-        coherence: 1.0
+        coherence: 1.0,
+        syncTicks: 0
       },
       frontierLevelArchitect: {
         id: 'frontierLevelArchitect',
         name: 'Frontier Parkour Level Architect',
         desc: 'Procedural wallrun corridors, rooftops, zip pads & Titan chokepoints',
         enabled: true,
-        levelsBuilt: 0
+        levelsBuilt: 0,
+        sectorsForged: 0
       },
       fortressArenaBuilder: {
         id: 'fortressArenaBuilder',
         name: 'Fortress Symmetry Arena Builder',
         desc: 'Mirrored RED/BLU battlements, bridges, sniper towers & KOTH spires',
         enabled: true,
-        arenasBuilt: 0
+        arenasBuilt: 0,
+        mapsForged: 0
       },
       marioTileTopology: {
         id: 'marioTileTopology',
         name: 'Mario Topology & Verticality Gen',
         desc: 'Syncs pit-safe platform elevation & coin arcs from Thought Cloud',
-        enabled: true
+        enabled: true,
+        levelsSynthesized: 0
       },
       biomeAtmosphereMutator: {
         id: 'biomeAtmosphereMutator',
         name: 'Cross-Engine Sky & Fog Mutator',
         desc: 'Live-rewrites WebGL sky, fog, sun & rim lighting across playing games',
-        enabled: true
+        enabled: true,
+        mutationsCount: 0
       },
       realityRuleOverwriter: {
         id: 'realityRuleOverwriter',
         name: 'Live Ruleset & Time-Warp Solver',
         desc: 'Mutates live gravity, timeScale, fire rate & speed mid-match',
         enabled: true,
-        timeScale: 1.0
+        timeScale: 1.0,
+        rulesOverwritten: 0
       },
       proceduralPropPopulator: {
         id: 'proceduralPropPopulator',
@@ -331,7 +337,8 @@ export class DaemonSupervisor {
         id: 'crossGamePortalSync',
         name: 'Cross-Game Level & CAD Link',
         desc: 'Projects active level layouts & CAD monuments across every viewport',
-        enabled: true
+        enabled: true,
+        crossSyncs: 0
       },
       cognitiveMutationGuard: {
         id: 'cognitiveMutationGuard',
