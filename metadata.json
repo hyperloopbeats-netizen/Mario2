@@ -1,0 +1,6 @@
+{
+  "name": "matrix-game-engine",
+  "description": "Matrix Game Engine — interactive WebGL, Three.js, and desktop OS simulation suite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

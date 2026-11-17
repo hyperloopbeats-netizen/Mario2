@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>matrix-game-engine — Black Liquid OS · Mario, Liquid CAD &amp; Black Glass Video</title>
+  <meta name="description" content="Single Black Liquid OS hosting Super Mario 2D/3D, AI Liquid CAD, Concept Production Matrix, and Full HD Black Glass Video Studio." />
+  <meta property="og:title" content="matrix-game-engine — Black Liquid OS" />
+  <meta property="og:description" content="Single Black Liquid OS hosting Super Mario 2D/3D, AI Liquid CAD, Concept Production Matrix, and Full HD Black Glass Video Studio." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three/build/three.module.js",
+        "three/addons/": "/vendor/three/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-void: #030508;
+      --surface-liquid: rgba(8, 11, 17, 0.94);
+      --surface-raised: rgba(14, 19, 28, 0.96);
+      --border-hairline: rgba(255, 255, 255, 0.12);
+      --border-active: rgba(226, 232, 240, 0.28);
+      --text-primary: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #ef4444;
+      --accent-hover: #dc2626;
+      --accent-sky: #38bdf8;
+      --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; user-select: none; }
+    input, select, textarea { user-select: auto; }
+    button, select, a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      background: var(--bg-void); color: var(--text-primary); font-family: var(--font-sans);
+    }
+
+    #liquid-backdrop {
+      position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+    }
+
+    /* Top Bar Contract: 3 zones */
+    .os-topbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 44px; padding: 0 20px;
+      background: rgba(6, 8, 13, 0.95); border-bottom: 1px solid var(--border-hairline);
+      display: flex; align-items: center; justify-content: space-between; gap: 32px; z-index: 900;
+    }
+
+    .os-brand {
+      font-family: var(--font-display); font-size: 15px; font-weight: 600;
+      letter-spacing: -0.01em; color: var(--text-primary); white-space: nowrap; flex-shrink: 0;
+    }
+
+    .os-nav { display: flex; align-items: center; gap: 22px; overflow-x: auto; }
+
+    .os-nav-link {
+      background: none; border: 0; padding: 4px 2px; color: var(--text-muted);
+      font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer;
+      white-space: nowrap; flex-shrink: 0; border-bottom: 1px solid transparent;
+      transition: color 0.16s ease, border-color 0.16s ease;
+    }
+    .os-nav-link:hover, .os-nav-link:focus-visible {
+      color: var(--text-primary); border-bottom-color: rgba(255, 255, 255, 0.35); outline: none;
+    }
+
+    .os-primary-cta {
+      padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08); color: var(--text-primary);
+      font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .os-primary-cta:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.32); }
+
+    .os-desktop { position: fixed; inset: 44px 0 68px 0; z-index: 10; overflow: hidden; }
+
+    .os-window {
+      position: absolute; display: flex; flex-direction: column; border-radius: 14px;
+      background: var(--surface-liquid); border: 1px solid var(--border-hairline);
+      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      overflow: hidden; transition: opacity 0.18s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .os-window.is-dragging { transition: none; }
+    .os-window.is-minimized { opacity: 0; transform: scale(0.92) translateY(36px); pointer-events: none; }
+    .os-window.is-hidden { display: none; }
+    .os-window.is-maximized {
+      top: 8px !important; left: 8px !important;
+      width: calc(100vw - 16px) !important; height: calc(100vh - 122px) !important; border-radius: 10px;
+    }
+
+    .os-win-header {
+      height: 40px; padding: 0 14px; background: var(--surface-raised);
+      border-bottom: 1px solid var(--border-hairline); gap: 10px;
+      display: flex; align-items: center; justify-content: space-between; cursor: move; flex-shrink: 0;
+    }
+    .os-win-title {
+      font-family: var(--font-display); font-size: 13px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    }
+    .os-win-actions { display: flex; align-items: center; gap: 6px; }
+    .win-ctrl-btn {
+      width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-hairline);
+      background: rgba(255, 255, 255, 0.04); color: var(--text-muted); font-size: 12px;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .win-ctrl-btn:hover { background: rgba(255, 255, 255, 0.14); color: var(--text-primary); }
+
+    .mario-toolbar {
+      padding: 8px 14px; border-bottom: 1px solid var(--border-hairline);
+      background: rgba(6, 9, 14, 0.96); display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0;
+    }
+    .toolbar-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .segmented {
+      display: inline-flex; padding: 2px; border-radius: 7px;
+      background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border-hairline);
+    }
+    .seg-btn {
+      border: 0; background: transparent; color: var(--text-muted); padding: 5px 12px;
+      border-radius: 5px; font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .seg-btn.is-active { background: var(--accent); color: #ffffff; }
+
+    .tool-select, .tool-btn, .tool-input {
+      height: 30px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--border-hairline);
+      background: rgba(255, 255, 255, 0.05); color: var(--text-primary);
+      font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+    }
+    .tool-select, .tool-btn { cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .tool-input { min-width: 200px; flex: 1; }
+    .tool-input:focus { outline: none; border-color: var(--accent-sky); }
+    .tool-btn:hover, .tool-select:hover { border-color: var(--border-active); background: rgba(255, 255, 255, 0.1); }
+    .tool-btn.is-active { border-color: rgba(239, 68, 68, 0.7); background: rgba(239, 68, 68, 0.2); }
+    .tool-btn.is-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .tool-btn.is-primary:hover { background: var(--accent-hover); }
+
+    .mario-hud {
+      padding: 7px 14px; border-bottom: 1px solid var(--border-hairline); background: #05070c;
+      font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+      color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .hud-items { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hud-items strong { color: var(--text-primary); font-weight: 600; }
+
+    .status-strip {
+      padding: 6px 14px; border-bottom: 1px solid var(--border-hairline); background: #060910;
+      font-size: 12px; color: var(--text-muted); display: flex; align-items: center;
+      justify-content: space-between; gap: 10px; flex-shrink: 0; flex-wrap: wrap;
+      max-height: 62px; overflow-y: auto;
+    }
+    .status-strip .is-error { color: #f87171; }
+
+    #mario-viewport, #cad-viewport, #movement-viewport, #scene-viewport, #sl-viewport, #tf-viewport, #tf2-viewport {
+      position: relative; flex: 1; min-height: 220px; background: #000000; overflow: hidden;
+    }
+    #mario-2d-canvas, #mario-3d-canvas, #cad-canvas, #movement-canvas, #scene-canvas, #sl-canvas, #tf-canvas, #tf2-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    }
+    .tf-crosshair {
+      position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
+      transform: translate(-50%, -50%); pointer-events: none; z-index: 12;
+      border: 1.5px solid rgba(248, 250, 252, 0.85); border-radius: 50%;
+    }
+    .tf-crosshair.is-hit { border-color: #ef4444; transform: translate(-50%, -50%) scale(1.35); }
+    .tf-scope-ring {
+      position: absolute; inset: 0; pointer-events: none; z-index: 11;
+      border: 42px solid rgba(2, 4, 8, 0.92);
+      box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.95);
+    }
+    .tf-killfeed {
+      position: absolute; top: 10px; right: 12px; z-index: 14; pointer-events: none;
+      display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+      font-family: var(--font-mono); font-size: 11px;
+    }
+    .tf-kill-entry {
+      padding: 3px 8px; border-radius: 4px; background: rgba(6, 9, 14, 0.86);
+      border: 1px solid var(--border-hairline); color: #f8fafc;
+    }
+    .tf2-prompt-banner {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 15; pointer-events: none; padding: 5px 12px; border-radius: 6px;
+      background: rgba(6, 12, 22, 0.88); border: 1px solid rgba(56, 189, 248, 0.45);
+      font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: #e0f2fe;
+      white-space: nowrap;
+    }
+    #tf2-smart-locks { position: absolute; inset: 0; pointer-events: none; z-index: 13; }
+    .tf2-lock-box {
+      position: absolute; width: 28px; height: 28px; transform: translate(-50%, -50%);
+      border: 2px solid #f97316; box-shadow: 0 0 10px rgba(249, 115, 22, 0.7);
+    }
+    .tf-dual-stick {
+      position: absolute; inset: auto 0 0 0; height: 132px; padding: 8px 14px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      pointer-events: none; z-index: 19;
+    }
+    .log-scroll {
+      flex: 1; min-height: 160px; max-height: 360px; overflow-y: auto;
+      padding: 10px; border-radius: 8px; background: #03060c; border: 1px solid var(--border-hairline);
+      font-family: var(--font-mono); font-size: 11px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .log-row { display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
+    .code-area {
+      width: 100%; min-height: 160px; padding: 10px; border-radius: 8px;
+      border: 1px solid var(--border-hairline); background: #03060c; color: #e2e8f0;
+      font-family: var(--font-mono); font-size: 11px; resize: vertical;
+    }
+
+    .studio-split {
+      flex: 1; display: grid; grid-template-columns: 1fr 290px; min-height: 220px; overflow: hidden;
+    }
+    .studio-sidebar {
+      border-left: 1px solid var(--border-hairline); padding: 14px; overflow-y: auto;
+      background: #060910; display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .matrix-stage-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      background: #020408; padding: 10px; min-height: 220px; overflow: hidden;
+    }
+    .matrix-stage-wrap canvas {
+      width: 100%; max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; object-fit: contain;
+      border: 1px solid var(--border-hairline); border-radius: 6px; background: #000;
+    }
+    .export-strip {
+      padding: 10px 14px; border-top: 1px solid var(--border-hairline); background: #060910;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .daemon-list {
+      display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border-hairline);
+    }
+    .daemon-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; font-size: 12px; cursor: pointer;
+    }
+    .daemon-meta { display: flex; flex-direction: column; gap: 1px; }
+    .daemon-name { color: var(--text-primary); font-weight: 500; }
+    .daemon-desc { color: var(--text-muted); font-size: 11px; line-height: 1.3; }
+
+    .shot-strip {
+      padding: 10px 14px; border-top: 1px solid var(--border-hairline); background: #060910;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; flex-shrink: 0;
+    }
+    .shot-chip {
+      padding: 8px 10px; border-radius: 7px; border: 1px solid var(--border-hairline);
+      background: rgba(255, 255, 255, 0.03); color: var(--text-primary); text-align: left;
+      cursor: pointer; display: flex; flex-direction: column; gap: 2px; font-family: inherit;
+    }
+    .shot-chip:hover { border-color: var(--border-active); }
+    .shot-chip.is-active { border-color: var(--accent); background: rgba(239, 68, 68, 0.14); }
+    .shot-title { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .shot-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+    .is-hidden { display: none !important; }
+
+    .game-overlay {
+      position: absolute; inset: 0; background: rgba(4, 6, 11, 0.86);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 20px; z-index: 25; overflow-y: auto;
+    }
+    .game-overlay h2 { margin: 0 0 8px; font-family: var(--font-display); font-size: clamp(22px, 3vw, 34px); font-weight: 700; }
+    .game-overlay p { margin: 0 0 16px; max-width: 500px; font-size: 13px; line-height: 1.5; color: #cbd5e1; }
+    .overlay-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .btn-action-primary {
+      padding: 10px 18px; border-radius: 8px; border: 0; background: var(--accent); color: #fff;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .btn-action-primary:hover { background: var(--accent-hover); }
+    .btn-action-secondary {
+      padding: 10px 18px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.08); color: #fff; font-family: var(--font-sans);
+      font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .controls-hint { margin-top: 14px; font-family: var(--font-mono); font-size: 11px; color: #94a3b8; }
+
+    /* Dual Analog Thumbsticks & Fire Controls (positioned in bedrock safe-zone deck) */
+    #dual-stick-overlay {
+      position: absolute; inset: auto 0 0 0; height: 128px; padding: 8px 14px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      pointer-events: none; z-index: 18;
+    }
+    .stick-cluster {
+      display: flex; align-items: center; gap: 10px; pointer-events: auto; touch-action: none;
+    }
+    .thumbstick-base {
+      position: relative; width: 102px; height: 102px; border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.22);
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.14), rgba(8, 12, 20, 0.86));
+      box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.75);
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none; cursor: grab;
+    }
+    .thumbstick-base::after {
+      content: attr(data-label); position: absolute; bottom: 5px; font-family: var(--font-mono);
+      font-size: 9px; letter-spacing: 0.08em; color: rgba(226, 232, 240, 0.55); pointer-events: none;
+    }
+    .thumbstick-knob {
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.55);
+      background: radial-gradient(circle at 35% 30%, #f8fafc, #64748b);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.75);
+      pointer-events: none; transition: box-shadow 0.1s ease;
+    }
+    .thumbstick-knob.is-active {
+      border-color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.65);
+    }
+    .thumbstick-knob.is-fire.is-active {
+      border-color: #f97316;
+      background: radial-gradient(circle at 35% 30%, #fef08a, #ef4444);
+      box-shadow: 0 0 18px rgba(249, 115, 22, 0.8);
+    }
+    .arcade-action-col {
+      display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+    }
+    .arcade-pad-btn {
+      min-width: 56px; height: 44px; padding: 0 10px; border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(12, 18, 28, 0.88);
+      color: #f8fafc; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+      cursor: pointer; touch-action: none;
+    }
+    .arcade-pad-btn.is-fire-btn { border-color: rgba(249, 115, 22, 0.55); color: #fed7aa; }
+    .arcade-pad-btn.is-jump-btn { border-color: rgba(56, 189, 248, 0.55); color: #bae6fd; }
+    .arcade-pad-btn.is-pressed { background: var(--accent); border-color: #fca5a5; color: #fff; }
+
+    /* Dedicated Full-Screen Mobile Arcade Shell */
+    #mobile-arcade-shell {
+      position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: 1200;
+      background: #030508; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .arcade-topbar {
+      height: 40px; padding: 0 12px; background: rgba(6, 9, 14, 0.96);
+      border-bottom: 1px solid var(--border-hairline);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0;
+    }
+    .arcade-hud-row {
+      display: flex; align-items: center; gap: 10px; font-family: var(--font-mono);
+      font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-muted);
+      overflow: hidden; white-space: nowrap;
+    }
+    .arcade-hud-row strong { color: var(--text-primary); }
+    .heat-track {
+      width: 48px; height: 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden;
+    }
+    #arc-heat-fill { width: 0%; height: 100%; background: #f97316; transition: width 0.08s linear; }
+    #mobile-arcade-stage-slot {
+      flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+
+    .win-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; font-size: 13px; }
+    .control-row { display: flex; flex-direction: column; gap: 5px; }
+    .control-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+    .control-label strong { color: var(--text-primary); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .telemetry-line {
+      padding-top: 10px; border-top: 1px solid var(--border-hairline);
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+
+    .suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+    .suite-card {
+      padding: 12px; border-radius: 10px; border: 1px solid var(--border-hairline);
+      background: rgba(255, 255, 255, 0.03); text-decoration: none; color: var(--text-primary);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .suite-card:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.07); }
+    .suite-title { font-size: 13px; font-weight: 600; }
+    .suite-desc { font-size: 11px; color: var(--text-muted); }
+
+    .os-dock {
+      position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+      height: 48px; padding: 0 10px; border-radius: 12px; max-width: 96vw; overflow-x: auto;
+      scrollbar-width: none;
+      background: rgba(8, 11, 17, 0.94); border: 1px solid var(--border-hairline);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      display: flex; align-items: center; gap: 4px; z-index: 900;
+    }
+    .os-dock::-webkit-scrollbar { display: none; }
+    .dock-btn {
+      position: relative; height: 34px; padding: 0 11px; border-radius: 8px; border: 0;
+      background: transparent; color: var(--text-muted); font-family: var(--font-sans);
+      font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .dock-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary); }
+    .dock-btn.is-open { color: var(--text-primary); }
+    .dock-btn.is-open::after {
+      content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+      width: 16px; height: 2px; border-radius: 2px; background: var(--accent);
+    }
+
+    @media (max-width: 820px) {
+      .os-topbar { padding: 0 12px; gap: 10px; }
+      .os-nav { display: none; }
+      .os-desktop { inset: 44px 0 64px 0; }
+      .os-window {
+        top: 6px !important; left: 6px !important;
+        width: calc(100vw - 12px) !important; height: calc(100dvh - 116px) !important;
+        border-radius: 10px; overflow-y: auto;
+      }
+      .os-win-header { height: 36px; padding: 0 10px; }
+      .mario-toolbar { padding: 6px 10px; gap: 6px; }
+      .mario-hud { padding: 5px 10px; gap: 6px; font-size: 11px; }
+      .tool-input { min-width: 130px; }
+      .os-dock { justify-content: flex-start; bottom: 8px; height: 46px; }
+      .studio-split { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 46vh) auto; overflow: visible; }
+      .studio-sidebar { border-left: 0; border-top: 1px solid var(--border-hairline); max-height: none; }
+      .matrix-stage-wrap { min-height: 220px; padding: 8px; }
+      .shot-strip { padding: 8px 10px; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .thumbstick-base { width: 88px; height: 88px; }
+      .thumbstick-knob { width: 36px; height: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="liquid-backdrop" aria-hidden="true"></canvas>
+
+  <!-- Top Bar (3-Zone Contract) -->
+  <header class="os-topbar">
+    <span class="os-brand">Black Liquid OS</span>
+
+    <nav class="os-nav" aria-label="OS Windows">
+      <button type="button" class="os-nav-link" data-open-window="win-thought-cloud">Thought Cloud</button>
+      <button type="button" class="os-nav-link" data-open-window="win-level-frontier">Level Forge</button>
+      <button type="button" class="os-nav-link" data-open-window="win-titanfall">Titanfall 2</button>
+      <button type="button" class="os-nav-link" data-open-window="win-fortress">Team Fortress</button>
+      <button type="button" class="os-nav-link" data-open-window="win-sentient-architect">Sentient Studio</button>
+      <button type="button" class="os-nav-link" data-open-window="win-mario">Mario</button>
+      <button type="button" class="os-nav-link" data-open-window="win-pipeline">Pipeline</button>
+    </nav>
+
+    <button type="button" id="btn-os-fullscreen" class="os-primary-cta">Mobile Arcade</button>
+  </header>
+
+  <main class="os-desktop">
+    <!-- 1. Super Mario 2D & 3D Game Window -->
+    <section
+      id="win-mario"
+      class="os-window"
+      style="top: 12px; left: max(12px, calc(50% - 490px)); width: min(980px, calc(100vw - 24px)); height: min(645px, calc(100vh - 130px));"
+      aria-label="Super Mario 2D and 3D"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Super Mario Classic — 2D &amp; 3D Engine</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <div class="segmented" role="group" aria-label="Graphics Mode">
+            <button type="button" id="btn-mode-2d" class="seg-btn is-active">2D Classic</button>
+            <button type="button" id="btn-mode-3d" class="seg-btn">3D Spatial</button>
+          </div>
+          <div id="camera-3d-wrap" class="is-hidden">
+            <select id="select-camera-3d" class="tool-select" aria-label="3D Camera">
+              <option value="chase">Camera: Dynamic Chase</option>
+              <option value="side">Camera: Side 3D</option>
+              <option value="hero">Camera: Hero Angle</option>
+            </select>
+          </div>
+          <select id="select-world" class="tool-select" aria-label="Stage Select">
+            <option value="0">1-1 Mushroom Plains</option>
+            <option value="1">1-2 Subterranean Vault</option>
+            <option value="2">1-3 Skybridge Fortress</option>
+            <option value="3">1-4 World Forge Stage</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="btn-touch-toggle" class="tool-btn">Dual Sticks</button>
+          <button type="button" id="btn-arcade-fullscreen" class="tool-btn is-primary">Full Screen Arcade</button>
+          <button type="button" id="btn-pause" class="tool-btn">Pause</button>
+          <button type="button" id="btn-restart" class="tool-btn">Restart</button>
+        </div>
+      </div>
+
+      <div class="mario-hud">
+        <div class="hud-items">
+          <span>Score <strong id="hud-score">000000</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Best <strong id="hud-high">000000</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Coins <strong id="hud-coins">00</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>World <strong id="hud-world">1-1</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Form <strong id="hud-power">Small</strong></span>
+        </div>
+        <div class="hud-items">
+          <span>Time <strong id="hud-time">400</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Lives <strong id="hud-lives">3</strong></span>
+        </div>
+      </div>
+
+      <div id="mario-viewport">
+        <canvas id="mario-2d-canvas"></canvas>
+        <canvas id="mario-3d-canvas" class="is-hidden"></canvas>
+
+        <div id="overlay-title" class="game-overlay">
+          <h2>Super Mario Bros.</h2>
+          <p>Play live in 2D Classic or 3D Spatial with dual analog thumbsticks, 360-degree aimed fire blasters, and custom World Forge stages.</p>
+          <div class="overlay-actions">
+            <button type="button" id="btn-start-2d" class="btn-action-primary">Play 2D Classic</button>
+            <button type="button" id="btn-start-3d" class="btn-action-secondary">Play 3D Spatial</button>
+            <button type="button" id="btn-start-arcade" class="btn-action-secondary">Full-Screen Dual Sticks</button>
+          </div>
+          <div class="controls-hint">Move: Left Stick / A,D · Aim &amp; Fire: Right Stick / X · Jump: A / Space · Switch 2D/3D: V</div>
+        </div>
+
+        <div id="overlay-paused" class="game-overlay is-hidden">
+          <h2>Game Paused</h2>
+          <p>Press Resume or P to continue playing.</p>
+          <div class="overlay-actions">
+            <button type="button" id="btn-resume" class="btn-action-primary">Resume Game</button>
+          </div>
+        </div>
+
+        <div id="overlay-end" class="game-overlay is-hidden">
+          <h2 id="end-heading">Game Over</h2>
+          <p id="end-summary">Final Score 000000</p>
+          <div class="overlay-actions">
+            <button type="button" id="btn-play-again" class="btn-action-primary">Play Again</button>
+          </div>
+        </div>
+
+        <!-- Dual Analog Thumbsticks & Tactical Fire Controls (Bedrock Safe Zone) -->
+        <div id="dual-stick-overlay" class="is-hidden">
+          <div class="stick-cluster">
+            <div id="stick-left-zone" class="thumbstick-base" data-label="MOVE">
+              <div id="stick-left-knob" class="thumbstick-knob"></div>
+            </div>
+            <div class="arcade-action-col">
+              <button type="button" id="arcade-btn-dash" class="arcade-pad-btn" aria-label="Sprint Dash">DASH</button>
+            </div>
+          </div>
+
+          <div class="stick-cluster">
+            <div class="arcade-action-col">
+              <button type="button" id="arcade-btn-jump" class="arcade-pad-btn is-jump-btn" aria-label="Jump">JUMP</button>
+              <button type="button" id="arcade-btn-fire" class="arcade-pad-btn is-fire-btn" aria-label="Fire">FIRE</button>
+            </div>
+            <div id="stick-right-zone" class="thumbstick-base" data-label="AIM FIRE">
+              <div id="stick-right-knob" class="thumbstick-knob is-fire"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Liquid CAD App (Prompt HD 3D Systems + Real-Time Scaling) -->
+    <section
+      id="win-cad"
+      class="os-window is-hidden"
+      style="top: 22px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Liquid CAD"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Liquid CAD — Prompt &amp; Real-Time 3D Scaling</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <select id="cad-preset-select" class="tool-select" aria-label="CAD Preset">
+            <option value="hyperloop_turbine">Hyperloop Cryo-Turbine</option>
+            <option value="black_glass_monolith">Obsidian Quantum Monolith</option>
+            <option value="kinetic_mech_frame">Mario Exo-Frame MK IV</option>
+          </select>
+          <input id="cad-prompt-input" type="text" class="tool-input" placeholder="Prompt a 3D CAD system (e.g. 'Dog', 'Turret', 'orbital thruster')..." />
+          <button type="button" id="cad-btn-synth" class="tool-btn is-primary">Prompt AI</button>
+          <button type="button" id="cad-btn-local-synth" class="tool-btn">Local Synth</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="cad-btn-wire" class="tool-btn">Wireframe</button>
+          <button type="button" id="cad-btn-send-matrix" class="tool-btn">Send to Matrix</button>
+        </div>
+      </div>
+
+      <div class="status-strip">
+        <span id="cad-status">Hyperloop Cryo-Turbine</span>
+        <span id="cad-part-count" style="font-family: var(--font-mono);">9 parts</span>
+      </div>
+
+      <div class="studio-split">
+        <div id="cad-viewport">
+          <canvas id="cad-canvas"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Global Scale</span><strong id="val-cad-global">1.00x</strong></div>
+            <input type="range" id="cad-scale-global" min="0.25" max="2.5" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Scale X</span><strong id="val-cad-x">1.00x</strong></div>
+            <input type="range" id="cad-scale-x" min="0.3" max="2.4" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Scale Y</span><strong id="val-cad-y">1.00x</strong></div>
+            <input type="range" id="cad-scale-y" min="0.3" max="2.4" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Scale Z</span><strong id="val-cad-z">1.00x</strong></div>
+            <input type="range" id="cad-scale-z" min="0.3" max="2.4" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Exploded Assembly</span><strong id="val-cad-explode">0.00u</strong></div>
+            <input type="range" id="cad-explode" min="0" max="2.5" step="0.05" value="0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Rotor Spin Speed</span><strong id="val-cad-spin">1.00x</strong></div>
+            <input type="range" id="cad-spin" min="0" max="4" step="0.1" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Tessellation Detail</span><strong id="val-cad-detail">24 seg</strong></div>
+            <input type="range" id="cad-detail" min="10" max="48" step="2" value="24" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 3. Graphics Engine & Concept Production Matrix -->
+    <section
+      id="win-matrix"
+      class="os-window is-hidden"
+      style="top: 28px; left: max(20px, calc(50% - 485px)); width: min(970px, calc(100vw - 40px)); height: min(625px, calc(100vh - 140px));"
+      aria-label="Concept Production Matrix"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Graphics Engine — Concept Production Matrix</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="mx-camera-select" class="tool-select" aria-label="Matrix Camera">
+            <option value="orbit">Camera: Orbital Sweep</option>
+            <option value="dolly">Camera: Dolly Push</option>
+            <option value="crane">Camera: Crane Rise</option>
+            <option value="hero">Camera: Hero Focus</option>
+            <option value="sweep">Camera: Wide Pan</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="mx-btn-open-video" class="tool-btn is-primary">Open in Black Glass Video</button>
+        </div>
+      </div>
+
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="matrix-canvas" width="1280" height="720"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">Unified Systems</div>
+          <label class="control-label" style="cursor: pointer;"><span>Liquid CAD Assembly</span><input type="checkbox" id="mx-layer-cad" checked /></label>
+          <label class="control-label" style="cursor: pointer;"><span>Digital Sun &amp; Motes</span><input type="checkbox" id="mx-layer-sun" checked /></label>
+          <label class="control-label" style="cursor: pointer;"><span>Mario 3D Hero Rig</span><input type="checkbox" id="mx-layer-mario" checked /></label>
+          <label class="control-label" style="cursor: pointer;"><span>Ferrofluid Horizon Grid</span><input type="checkbox" id="mx-layer-grid" checked /></label>
+          <label class="control-label" style="cursor: pointer;"><span>Promo Monolith Screen</span><input type="checkbox" id="mx-layer-promo" checked /></label>
+
+          <div class="control-row" style="margin-top: 6px;">
+            <div class="control-label"><span>Studio Exposure</span><strong id="val-mx-exposure">1.15</strong></div>
+            <input type="range" id="mx-exposure" min="0.5" max="2.0" step="0.05" value="1.15" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>CAD Centerpiece Scale</span><strong id="val-mx-scale">1.00x</strong></div>
+            <input type="range" id="mx-cad-scale" min="0.4" max="2.2" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Kinematic Spin Boost</span><strong id="val-mx-spin">1.0x</strong></div>
+            <input type="range" id="mx-spin-boost" min="0" max="4" step="0.1" value="1.0" />
+          </div>
+
+          <div class="daemon-list" id="daemon-list">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+              <span>36 Engine Daemons (6 Core + 30 Upgrade)</span>
+              <span id="daemon-fps-readout" style="font-family: var(--font-mono); color: var(--text-muted);">60 fps</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 4. Black Glass Video Studio (Real-Time Movie & Full HD 1080p Promo Creator) -->
+    <section
+      id="win-video"
+      class="os-window is-hidden"
+      style="top: 18px; left: max(14px, calc(50% - 500px)); width: min(1000px, calc(100vw - 28px)); height: min(650px, calc(100vh - 130px));"
+      aria-label="Black Glass Video Studio"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Black Glass Video — Full HD 1080p Movie Engine</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <select id="vid-preset-select" class="tool-select" aria-label="Movie Preset">
+            <option value="black_glass_promo">Preset: Black Glass Genesis</option>
+            <option value="mario_odyssey">Preset: Mario Cyber Odyssey</option>
+          </select>
+          <input id="vid-prompt-input" type="text" class="tool-input" placeholder="Describe a movie scene or promo film to evoke..." />
+          <button type="button" id="vid-btn-evoke" class="tool-btn is-primary">Evoke Movie Scene</button>
+        </div>
+        <div class="toolbar-group">
+          <input type="file" id="vid-promo-input" accept="image/*,video/*" class="is-hidden" />
+          <button type="button" id="vid-promo-btn" class="tool-btn">Upload Promo / Video</button>
+          <select id="vid-promo-mode" class="tool-select" aria-label="Promo Placement">
+            <option value="monolith">Promo: 3D Monolith</option>
+            <option value="backdrop">Promo: Backdrop Blend</option>
+            <option value="pip">Promo: Glass PIP</option>
+          </select>
+          <select id="vid-fps-select" class="tool-select" aria-label="Export Frame Rate">
+            <option value="30">Export: 30 fps Smooth</option>
+            <option value="60">Export: 60 fps Ultra</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="status-strip">
+        <span id="vid-status">BLACK GLASS // PROJECT GENESIS — Stepped 1080p production ready.</span>
+        <div class="toolbar-group">
+          <span id="vid-timecode" style="font-family: var(--font-mono);">0.0s / 14.0s</span>
+          <button type="button" id="vid-btn-play" class="tool-btn">Pause</button>
+          <button type="button" id="vid-btn-export" class="tool-btn is-primary">Export 1080p HD</button>
+          <a id="vid-download-link" class="tool-btn is-hidden" style="display: inline-flex; align-items: center; text-decoration: none; border-color: #38bdf8; color: #bae6fd;">Download 1080p</a>
+        </div>
+      </div>
+
+      <div class="matrix-stage-wrap">
+        <canvas id="video-compositor-canvas" width="1280" height="720"></canvas>
+      </div>
+
+      <div id="vid-shot-strip" class="shot-strip"></div>
+    </section>
+
+    <!-- 5. Hybrid Movement App (Spline & Spring Rig Linked to All Systems) -->
+    <section
+      id="win-movement"
+      class="os-window is-hidden"
+      style="top: 24px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(625px, calc(100vh - 135px));"
+      aria-label="Hybrid Movement Engine"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Hybrid Movement — Spline &amp; Spring Kinematics</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="mv-mode-select" class="tool-select" aria-label="Movement Mode">
+            <option value="figure_eight">Path: Figure-8 Arc</option>
+            <option value="spline_orbit">Path: Orbital Loop</option>
+            <option value="parkour_patrol">Path: Parkour Patrol</option>
+            <option value="cinema_glide">Path: Cinema Glide</option>
+            <option value="zero_g">Path: Zero-G Float</option>
+          </select>
+          <select id="mv-ease-select" class="tool-select" aria-label="Ease Curve">
+            <option value="quintic">Curve: Quintic C2</option>
+            <option value="cubic">Curve: Cubic S-Ease</option>
+            <option value="spring">Curve: Harmonic Spring</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="mv-btn-reset" class="tool-btn">Reset Rig</button>
+          <button type="button" class="tool-btn is-primary" data-open-window="win-matrix">View in Matrix</button>
+        </div>
+      </div>
+
+      <div class="studio-split">
+        <div id="movement-viewport">
+          <canvas id="movement-canvas"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Spring Stiffness</span><strong id="val-mv-stiff">115</strong></div>
+            <input type="range" id="mv-stiffness" min="40" max="240" step="5" value="115" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Damping Ratio</span><strong id="val-mv-damp">16</strong></div>
+            <input type="range" id="mv-damping" min="6" max="32" step="1" value="16" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Gait Speed</span><strong id="val-mv-speed">1.00x</strong></div>
+            <input type="range" id="mv-speed" min="0.4" max="2.4" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Spline Path Radius</span><strong id="val-mv-radius">3.4m</strong></div>
+            <input type="range" id="mv-radius" min="1.5" max="6.5" step="0.1" value="3.4" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Gait Smoothness</span><strong id="val-mv-smooth">0.78</strong></div>
+            <input type="range" id="mv-smooth" min="0.2" max="1.0" step="0.02" value="0.78" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>CAD Harmonic Float</span><strong id="val-mv-breath">0.35</strong></div>
+            <input type="range" id="mv-breath" min="0" max="1.2" step="0.05" value="0.35" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Camera Tracking Lag</span><strong id="val-mv-lag">0.55</strong></div>
+            <input type="range" id="mv-lag" min="0.1" max="1.0" step="0.05" value="0.55" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 6. Hybrid Scene Designer (Unified Environment, Atmosphere & Stage Positions) -->
+    <section
+      id="win-scene"
+      class="os-window is-hidden"
+      style="top: 26px; left: max(20px, calc(50% - 485px)); width: min(970px, calc(100vw - 40px)); height: min(630px, calc(100vh - 135px));"
+      aria-label="Hybrid Scene Designer"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Hybrid Scene Designer — Unified Stage &amp; Atmosphere</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="sc-biome-select" class="tool-select" aria-label="Scene Biome">
+            <option value="obsidian_studio">Biome: Obsidian Studio</option>
+            <option value="solar_foundry">Biome: Solar Foundry</option>
+            <option value="mushroom_twilight">Biome: Mushroom Twilight</option>
+            <option value="orbital_void">Biome: Orbital Void</option>
+            <option value="arctic_glass">Biome: Arctic Black Glass</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <a id="sc-btn-export-json" class="tool-btn" style="display: inline-flex; align-items: center; text-decoration: none;">Download Scene JSON</a>
+          <button type="button" class="tool-btn is-primary" data-open-window="win-text2movie">Open in Text to Movie</button>
+        </div>
+      </div>
+
+      <div class="studio-split">
+        <div id="scene-viewport">
+          <canvas id="scene-canvas"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Horizon Fog Density</span><strong id="val-sc-fog">0.020</strong></div>
+            <input type="range" id="sc-fog" min="0.005" max="0.045" step="0.001" value="0.02" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Key Light Intensity</span><strong id="val-sc-keyint">1.65</strong></div>
+            <input type="range" id="sc-keyint" min="0.5" max="2.6" step="0.05" value="1.65" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Key Light Elevation</span><strong id="val-sc-keyelev">12m</strong></div>
+            <input type="range" id="sc-keyelev" min="4" max="22" step="1" value="12" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Digital Sun Scale</span><strong id="val-sc-sunscale">1.00x</strong></div>
+            <input type="range" id="sc-sunscale" min="0.4" max="1.8" step="0.05" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Grid Shader Scale</span><strong id="val-sc-gridscale">1.25</strong></div>
+            <input type="range" id="sc-gridscale" min="0.5" max="3.0" step="0.05" value="1.25" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Mario Stage Offset X</span><strong id="val-sc-mariox">0.0m</strong></div>
+            <input type="range" id="sc-mariox" min="-4.0" max="4.0" step="0.2" value="0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Promo Monolith X</span><strong id="val-sc-promox">3.4m</strong></div>
+            <input type="range" id="sc-promox" min="-5.0" max="5.0" step="0.2" value="3.4" />
+          </div>
+          <div class="control-label" style="padding-top: 4px;">
+            <span>Rim Accent Color</span>
+            <input type="color" id="sc-rim-color" value="#38bdf8" style="background: none; border: 0; width: 32px; height: 22px; cursor: pointer;" />
+          </div>
+          <div class="control-label">
+            <span>Grid Shader Color</span>
+            <input type="color" id="sc-grid-color" value="#38bdf8" style="background: none; border: 0; width: 32px; height: 22px; cursor: pointer;" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 7. Single-Prompt Text to Movie File Generator -->
+    <section
+      id="win-text2movie"
+      class="os-window is-hidden"
+      style="top: 16px; left: max(14px, calc(50% - 500px)); width: min(1000px, calc(100vw - 28px)); height: min(650px, calc(100vh - 130px));"
+      aria-label="Text to Movie File Generator"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Text to Movie — Single-Prompt Film &amp; Export Generator</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <input id="t2m-prompt-input" type="text" class="tool-input" placeholder="Enter one prompt to generate scene, movement, 3D CAD, and 1080p movie files..." />
+          <select id="t2m-duration-select" class="tool-select" aria-label="Movie Duration">
+            <option value="12">12 sec</option>
+            <option value="16">16 sec</option>
+            <option value="20">20 sec</option>
+          </select>
+          <select id="t2m-fps-select" class="tool-select" aria-label="Export Frame Rate">
+            <option value="30">30 fps Smooth</option>
+            <option value="60">60 fps Ultra</option>
+          </select>
+          <button type="button" id="t2m-btn-generate" class="tool-btn is-primary">Generate Movie</button>
+        </div>
+        <div class="toolbar-group">
+          <select id="t2m-recipe-select" class="tool-select" aria-label="Starter Film Recipe">
+            <option value="">Starter Recipes...</option>
+            <option value="cyber_foundry">Cyber Foundry Launch</option>
+            <option value="mario_odyssey">Mario Kinetic Odyssey</option>
+            <option value="arctic_monolith">Arctic Black Glass</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="status-strip">
+        <span id="t2m-status">Ready. Enter a single prompt or pick a starter recipe to generate exportable movie files.</span>
+        <span id="t2m-progress" style="font-family: var(--font-mono);">Locked 1080p Pipeline</span>
+      </div>
+
+      <div class="matrix-stage-wrap">
+        <canvas id="t2m-canvas" width="1280" height="720"></canvas>
+      </div>
+
+      <div class="export-strip">
+        <div class="toolbar-group">
+          <button type="button" id="t2m-btn-export-webm" class="tool-btn is-primary">Export 1080p Movie (.webm)</button>
+          <a id="t2m-dl-webm" class="tool-btn is-hidden" style="display: inline-flex; align-items: center; text-decoration: none; border-color: #38bdf8; color: #bae6fd;">Download .webm</a>
+          <button type="button" id="t2m-btn-export-png" class="tool-btn">Save 1080p Poster (.png)</button>
+        </div>
+        <div class="toolbar-group">
+          <a id="t2m-dl-json" download="scene-package.json" class="tool-btn" style="display: inline-flex; align-items: center; text-decoration: none;">Download Scene (.json)</a>
+          <a id="t2m-dl-txt" download="shotlist-script.txt" class="tool-btn" style="display: inline-flex; align-items: center; text-decoration: none;">Download Script (.txt)</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. World & Physics Studio -->
+    <section
+      id="win-controls"
+      class="os-window is-hidden"
+      style="top: 64px; left: 48px; width: 340px; height: 420px;"
+      aria-label="World and Physics Controls"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">World &amp; Physics</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="win-body">
+        <div class="control-row">
+          <div class="control-label"><span>Jump to Stage</span></div>
+          <div class="btn-row">
+            <button type="button" class="tool-btn" data-jump-world="0">1-1 Plains</button>
+            <button type="button" class="tool-btn" data-jump-world="1">1-2 Vault</button>
+            <button type="button" class="tool-btn" data-jump-world="2">1-3 Skybridge</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <div class="control-label"><span>Gravity</span><strong id="val-gravity">42 m/s²</strong></div>
+          <input type="range" id="slider-gravity" min="20" max="65" step="1" value="42" />
+        </div>
+        <div class="control-row">
+          <div class="control-label"><span>Walk Speed</span><strong id="val-speed">9.2 u/s</strong></div>
+          <input type="range" id="slider-speed" min="5" max="15" step="0.2" value="9.2" />
+        </div>
+        <div class="control-row">
+          <div class="control-label"><span>Jump Velocity</span><strong id="val-jump">16.4 u/s</strong></div>
+          <input type="range" id="slider-jump" min="11" max="22" step="0.2" value="16.4" />
+        </div>
+        <button type="button" id="btn-reset-physics" class="tool-btn">Reset Physics Defaults</button>
+        <div class="telemetry-line">
+          <span>Position: <span id="tel-pos">3.0, 11.0</span></span>
+          <span>Velocity: <span id="tel-vel">0.0, 0.0</span></span>
+          <span>Mode: <span id="tel-state">TITLE_MENU · 2D</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Audio Synth Window -->
+    <section
+      id="win-audio"
+      class="os-window is-hidden"
+      style="top: 90px; right: 48px; width: 320px; height: 360px;"
+      aria-label="Chiptune Audio Synth"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Audio Synth</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="win-body">
+        <div class="control-row">
+          <div class="control-label"><span>Master Volume</span><strong id="val-volume">45%</strong></div>
+          <input type="range" id="slider-volume" min="0" max="100" step="1" value="45" />
+        </div>
+        <label class="control-label" style="cursor: pointer;"><span>Stage Music Sequencer</span><input type="checkbox" id="chk-music" checked /></label>
+        <label class="control-label" style="cursor: pointer;"><span>Retro Sound Effects</span><input type="checkbox" id="chk-sfx" checked /></label>
+        <div class="control-row">
+          <div class="control-label"><span>Sound Test</span></div>
+          <div class="btn-row">
+            <button type="button" class="tool-btn" data-sfx-test="jump">Jump</button>
+            <button type="button" class="tool-btn" data-sfx-test="coin">Coin</button>
+            <button type="button" class="tool-btn" data-sfx-test="powerup">Power-Up</button>
+            <button type="button" class="tool-btn" data-sfx-test="oneUp">1-UP</button>
+            <button type="button" class="tool-btn" data-sfx-test="fireball">Fireball</button>
+            <button type="button" class="tool-btn" data-sfx-test="stageClear">Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. AIM GitHub Framework Suite -->
+    <section
+      id="win-suite"
+      class="os-window is-hidden"
+      style="top: 80px; left: max(20px, calc(50% - 340px)); width: min(680px, calc(100vw - 40px)); height: min(460px, calc(100vh - 160px));"
+      aria-label="AIM Matrix Suite"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">AIM GitHub Framework Suite</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="win-body">
+        <div style="color: var(--text-muted); font-size: 12px;">
+          Launch any of the original modules from the matrix-game-engine repository.
+        </div>
+        <div id="suite-grid" class="suite-grid"></div>
+      </div>
+    </section>
+
+    <!-- 8. Generation Triad App 1: World & Level Forge -->
+    <section
+      id="win-triad-world"
+      class="os-window is-hidden"
+      style="top: 22px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Triad World Forge"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Generation Triad 1 — World &amp; Level Forge</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <input id="wf-prompt-input" type="text" class="tool-input" placeholder="Prompt a playable Mario world (e.g. 'neon subterranean crystal cavern with high jumps')..." />
+          <button type="button" id="wf-btn-synth" class="tool-btn is-primary">Forge with AI</button>
+          <button type="button" id="wf-btn-random" class="tool-btn">New Seed</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="wf-btn-push-mario" class="tool-btn is-primary">Play in Mario &amp; Arcade</button>
+          <button type="button" id="wf-btn-sync-scene" class="tool-btn">Sync Scene</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="wf-status">Obsidian Foundry Sector — Procedural &amp; AI Mario Stage Generator</span>
+        <span id="wf-seed-label" style="font-family: var(--font-mono);">Seed #4207</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="wf-preview-canvas" width="960" height="360"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Stage Theme</span></div>
+            <select id="wf-theme-select" class="tool-select">
+              <option value="overworld">Overworld Plains</option>
+              <option value="underground">Subterranean Vault</option>
+              <option value="sky">Skybridge Fortress</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Gravity</span><strong id="val-wf-grav">40 m/s²</strong></div>
+            <input type="range" id="wf-gravity" min="26" max="58" step="1" value="40" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Pit Frequency</span><strong id="val-wf-pits">0.16</strong></div>
+            <input type="range" id="wf-pits" min="0" max="0.45" step="0.02" value="0.16" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Platform Density</span><strong id="val-wf-plats">0.55</strong></div>
+            <input type="range" id="wf-plats" min="0.1" max="0.9" step="0.05" value="0.55" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Enemy Density</span><strong id="val-wf-enemies">0.52</strong></div>
+            <input type="range" id="wf-enemies" min="0.1" max="0.9" step="0.05" value="0.52" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Coin Richness</span><strong id="val-wf-coins">0.65</strong></div>
+            <input type="range" id="wf-coins" min="0.1" max="0.95" step="0.05" value="0.65" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Pipe Count</span><strong id="val-wf-pipes">4</strong></div>
+            <input type="range" id="wf-pipes" min="1" max="8" step="1" value="4" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 9. Generation Triad App 2: Shader & Material Lab -->
+    <section
+      id="win-triad-shader"
+      class="os-window is-hidden"
+      style="top: 24px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Triad Shader Lab"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Generation Triad 2 — Shader &amp; Material Lab</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <select id="sl-preset-select" class="tool-select">
+            <option value="obsidian_glass">Obsidian Black Glass</option>
+            <option value="liquid_mercury">Liquid Mercury Chrome</option>
+            <option value="solar_plasma">Solar Foundry Plasma</option>
+            <option value="cryo_sapphire">Cryo Sapphire Core</option>
+          </select>
+          <input id="sl-prompt-input" type="text" class="tool-input" placeholder="Describe a PBR material & lighting mood (e.g. 'bioluminescent emerald obsidian')..." />
+          <button type="button" id="sl-btn-synth" class="tool-btn is-primary">Synthesize AI</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" class="tool-btn" data-open-window="win-cad">Liquid CAD</button>
+          <button type="button" class="tool-btn is-primary" data-open-window="win-matrix">View in Matrix</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="sl-status">Obsidian Black Glass — Live PBR bridge synced to CAD, Matrix, Video &amp; Mario 3D.</span>
+      </div>
+      <div class="studio-split">
+        <div id="sl-viewport">
+          <canvas id="sl-canvas"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Metalness Offset</span><strong id="val-sl-metal">0.15</strong></div>
+            <input type="range" id="sl-metal" min="-0.5" max="0.5" step="0.02" value="0.15" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Roughness Offset</span><strong id="val-sl-rough">-0.18</strong></div>
+            <input type="range" id="sl-rough" min="-0.45" max="0.5" step="0.02" value="-0.18" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Glass Clearcoat</span><strong id="val-sl-coat">0.90</strong></div>
+            <input type="range" id="sl-coat" min="0" max="1" step="0.05" value="0.9" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Emissive Boost</span><strong id="val-sl-emissive">0.25</strong></div>
+            <input type="range" id="sl-emissive" min="0" max="1.5" step="0.05" value="0.25" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Horizon Grid Glow</span><strong id="val-sl-gridglow">1.05</strong></div>
+            <input type="range" id="sl-gridglow" min="0.3" max="1.6" step="0.05" value="1.05" />
+          </div>
+          <div class="control-label">
+            <span>Rim Accent</span>
+            <input type="color" id="sl-rim-color" value="#38bdf8" style="background: none; border: 0; width: 32px; height: 22px; cursor: pointer;" />
+          </div>
+          <div class="control-label">
+            <span>Grid Color</span>
+            <input type="color" id="sl-grid-color" value="#38bdf8" style="background: none; border: 0; width: 32px; height: 22px; cursor: pointer;" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 10. Generation Triad App 3: Sonic & FX Sequencer -->
+    <section
+      id="win-triad-sonic"
+      class="os-window is-hidden"
+      style="top: 26px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Triad Sonic Synth"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Generation Triad 3 — Sonic &amp; FX Sequencer</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <select id="sn-preset-select" class="tool-select">
+            <option value="cyber_foundry">Cyber Foundry Drive</option>
+            <option value="solar_overdrive">Solar Flare Overdrive</option>
+            <option value="arctic_pulse">Arctic Crystal Arpeggio</option>
+          </select>
+          <input id="sn-prompt-input" type="text" class="tool-input" placeholder="Prompt a chiptune soundtrack mood (e.g. 'intense synth boss battle at 172 bpm')..." />
+          <button type="button" id="sn-btn-synth" class="tool-btn is-primary">Compose AI</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="sn-btn-play" class="tool-btn is-primary">Play Loop</button>
+          <button type="button" id="sn-btn-stop" class="tool-btn">Stop</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="sn-status">Cyber Foundry Drive — Coupled to Digital Sun pulse &amp; Mario Fireball FX.</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="sn-canvas" width="960" height="400"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Tempo</span><strong id="val-sn-tempo">152 BPM</strong></div>
+            <input type="range" id="sn-tempo" min="85" max="220" step="2" value="152" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Lead Waveform</span></div>
+            <select id="sn-wave-select" class="tool-select">
+              <option value="square">Square Retro</option>
+              <option value="sawtooth">Sawtooth Synth</option>
+              <option value="triangle">Triangle Flute</option>
+            </select>
+          </div>
+          <div class="control-label">
+            <span>Synced Fireball Color</span>
+            <input type="color" id="sn-fire-color" value="#38bdf8" style="background: none; border: 0; width: 32px; height: 22px; cursor: pointer;" />
+          </div>
+          <button type="button" id="sn-btn-apply" class="tool-btn is-primary">Sync to Mario &amp; Matrix</button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 11. Team Fortress — Black Liquid Arena (Full-System 3D Class Shooter) -->
+    <section
+      id="win-fortress"
+      class="os-window is-hidden"
+      style="top: 12px; left: max(12px, calc(50% - 500px)); width: min(1000px, calc(100vw - 24px)); height: min(650px, calc(100vh - 130px));"
+      aria-label="Team Fortress Black Liquid Arena"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Team Fortress 3D — Black Liquid Arena (9 Classes · Skins · Full OS Sync)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="tf-mode-select" class="tool-select" aria-label="Game Mode">
+            <option value="koth">Mode: King of the Hill</option>
+            <option value="ctf">Mode: Capture the Flag</option>
+            <option value="tdm">Mode: Team Deathmatch</option>
+          </select>
+          <select id="tf-class-select" class="tool-select" aria-label="Class">
+            <option value="scout">Scout (Double Jump)</option>
+            <option value="soldier" selected>Soldier (Rocket Jump)</option>
+            <option value="pyro">Pyro (Flame + Airblast)</option>
+            <option value="demoman">Demoman (Grenades)</option>
+            <option value="heavy">Heavy (Minigun)</option>
+            <option value="engineer">Engineer (Auto-Sentry)</option>
+            <option value="medic">Medic (UberCharge)</option>
+            <option value="sniper">Sniper (2.5x Scope)</option>
+            <option value="spy">Spy (Cloak + Backstab)</option>
+          </select>
+          <select id="tf-skin-select" class="tool-select" aria-label="Skin">
+            <option value="black_liquid">Skin: Black Liquid</option>
+            <option value="standard">Skin: Classic RED/BLU</option>
+            <option value="australium">Skin: Australium Gold</option>
+            <option value="cryo_chrome">Skin: Cryo Chrome</option>
+            <option value="solar_ember">Skin: Solar Ember</option>
+            <option value="toxic_emerald">Skin: Toxic Emerald</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="tf-btn-sticks" class="tool-btn">Dual Sticks</button>
+          <button type="button" id="tf-btn-sync" class="tool-btn">Sync OS Assets</button>
+          <button type="button" id="tf-btn-start" class="tool-btn is-primary">Start / Restart</button>
+        </div>
+      </div>
+
+      <div class="mario-hud">
+        <div class="hud-items">
+          <span>Class <strong id="tf-hud-class">Soldier</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>HP <strong id="tf-hud-hp">200/200</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Ammo <strong id="tf-hud-ammo">4/4</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Ability <strong id="tf-hud-special">Ready</strong></span>
+        </div>
+        <div class="hud-items">
+          <span>RED <strong id="tf-hud-red">0</strong></span>
+          <span>vs</span>
+          <span>BLU <strong id="tf-hud-blu">0</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Objective <strong id="tf-hud-obj">KOTH 75s</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>K/D <strong id="tf-hud-kd">0/0</strong></span>
+        </div>
+      </div>
+
+      <div id="tf-viewport">
+        <canvas id="tf-canvas"></canvas>
+        <div id="tf-crosshair" class="tf-crosshair"></div>
+        <div id="tf-scope-ring" class="tf-scope-ring is-hidden"></div>
+        <div id="tf-killfeed" class="tf-killfeed"></div>
+
+        <div id="tf-overlay-menu" class="game-overlay">
+          <h2>Team Fortress — Black Liquid Arena</h2>
+          <p>Full 3D class combat powered by every OS module: Liquid CAD centerpiece on center bridge, Shader Lab metallic skins, World Forge gravity, Data Multiplier squads, and Dual-Thumbstick mobile or WASD + Mouse controls.</p>
+          <div class="overlay-actions">
+            <button type="button" id="tf-btn-play-now" class="btn-action-primary">Deploy into Match</button>
+            <button type="button" id="tf-btn-play-mobile" class="btn-action-secondary">Play with Dual Thumbsticks</button>
+          </div>
+          <div class="controls-hint">Move: WASD / Left Stick · Aim: Drag Canvas or Click Lock / Right Stick · Fire: Click / F · Jump: Space · Ability: Q / E · Reload: R</div>
+        </div>
+
+        <div id="tf-dual-stick" class="tf-dual-stick is-hidden">
+          <div class="stick-cluster">
+            <div id="tf-stick-left" class="thumbstick-base" data-label="MOVE">
+              <div id="tf-knob-left" class="thumbstick-knob"></div>
+            </div>
+            <div class="arcade-action-col">
+              <button type="button" id="tf-pad-reload" class="arcade-pad-btn">RLD</button>
+            </div>
+          </div>
+          <div class="stick-cluster">
+            <div class="arcade-action-col">
+              <button type="button" id="tf-pad-jump" class="arcade-pad-btn is-jump-btn">JUMP</button>
+              <button type="button" id="tf-pad-special" class="arcade-pad-btn is-fire-btn">SPEC</button>
+            </div>
+            <div id="tf-stick-right" class="thumbstick-base" data-label="AIM FIRE">
+              <div id="tf-knob-right" class="thumbstick-knob is-fire"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. Problem-Solving App 1: Pattern & Schema Guard -->
+    <section
+      id="win-guard"
+      class="os-window is-hidden"
+      style="top: 22px; left: max(18px, calc(50% - 460px)); width: min(920px, calc(100vw - 36px)); height: min(610px, calc(100vh - 140px));"
+      aria-label="Pattern and Schema Guard"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">App 1 — Pattern &amp; Schema Guard (Fetch &amp; JSON Healer)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <label class="control-label" style="flex-direction: row; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="pg-chk-autoheal" checked />
+            <span>Auto-Heal Fetch &amp; CAD Schemas</span>
+          </label>
+          <button type="button" id="pg-btn-clear" class="tool-btn">Clear Log</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="pg-btn-heal" class="tool-btn is-primary">Validate &amp; Repair Input</button>
+          <button type="button" id="pg-btn-push-cad" class="tool-btn">Push Repaired CAD</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="pg-status">Guards all API calls against HTML/non-JSON pattern mismatches &amp; invalid vectors.</span>
+        <span id="pg-stats" style="font-family: var(--font-mono);">Inspected 0 · Healed 0</span>
+      </div>
+      <div class="win-body">
+        <textarea id="pg-raw-input" class="code-area" placeholder="Paste malformed CAD JSON or enter a prompt string (e.g. Dog) to validate and auto-repair..."></textarea>
+        <div id="pg-log-list" class="log-scroll"></div>
+      </div>
+    </section>
+
+    <!-- 13. Problem-Solving App 2: Semantic CAD & Concept Synthesizer -->
+    <section
+      id="win-synth-fallback"
+      class="os-window is-hidden"
+      style="top: 24px; left: max(18px, calc(50% - 460px)); width: min(920px, calc(100vw - 36px)); height: min(610px, calc(100vh - 140px));"
+      aria-label="Semantic CAD Synthesizer"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">App 2 — Semantic CAD Synthesizer (Zero-Failure 3D Builder)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <input id="ss-prompt-input" type="text" class="tool-input" value="Dog" placeholder="Enter concept (Dog, Ship, Turret, Fortress, Reactor, Drone)..." />
+          <input type="color" id="ss-color-primary" value="#ef4444" title="Primary Color" style="background:none;border:0;width:30px;height:26px;" />
+          <input type="color" id="ss-color-accent" value="#38bdf8" title="Accent Color" style="background:none;border:0;width:30px;height:26px;" />
+          <button type="button" id="ss-btn-build" class="tool-btn is-primary">Synthesize 3D</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="ss-btn-push-all" class="tool-btn is-primary">Push to CAD + Matrix + Fortress</button>
+          <button type="button" id="ss-btn-save-vault" class="tool-btn">Save to Vault</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="ss-status">Ready — Builds articulated 3D assemblies locally when AI quota or pattern limits block prompts.</span>
+      </div>
+      <div class="win-body">
+        <div class="btn-row">
+          <button type="button" class="tool-btn" data-ss-quick="Dog">Preset: Cyber-Hound Dog</button>
+          <button type="button" class="tool-btn" data-ss-quick="Turret">Preset: Sentry Turret</button>
+          <button type="button" class="tool-btn" data-ss-quick="Ship">Preset: Interceptor Ship</button>
+          <button type="button" class="tool-btn" data-ss-quick="Fortress">Preset: Citadel Fortress</button>
+        </div>
+        <pre id="ss-json-preview" class="code-area" style="margin: 0; overflow: auto;"></pre>
+      </div>
+    </section>
+
+    <!-- 14. Data Multiplier & Management App 3: Data Multiplier Engine -->
+    <section
+      id="win-data-mult"
+      class="os-window is-hidden"
+      style="top: 26px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Data Multiplier Engine"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">App 3 — Data Multiplier Engine (CAD Arrays &amp; Squad Scaler)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="dm-domain-select" class="tool-select">
+            <option value="fortress_squads">Domain: Fortress Bot Squads</option>
+            <option value="cad_radial">Domain: Liquid CAD Radial Array</option>
+            <option value="world_loot">Domain: World Loot Matrix</option>
+          </select>
+          <select id="dm-factor-select" class="tool-select">
+            <option value="2">Multiply: 2x</option>
+            <option value="4" selected>Multiply: 4x</option>
+            <option value="8">Multiply: 8x</option>
+            <option value="16">Multiply: 16x</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="dm-btn-cad" class="tool-btn">Multiply CAD Array</button>
+          <button type="button" id="dm-btn-fortress" class="tool-btn is-primary">Push Squads to Fortress</button>
+          <button type="button" id="dm-btn-vault" class="tool-btn">Commit Batch to Vault</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="dm-status">Generates 2x–16x multiplied bot squads &amp; radial CAD arrays for the entire OS.</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="dm-canvas" width="760" height="400"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Fortress Bots / Team</span><strong id="val-dm-bots">4 bots</strong></div>
+            <input type="range" id="dm-bots" min="1" max="6" step="1" value="4" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Global HP Multiplier</span><strong id="val-dm-hp">1.00x</strong></div>
+            <input type="range" id="dm-hp" min="0.5" max="3.0" step="0.1" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Weapon Damage Scale</span><strong id="val-dm-dmg">1.00x</strong></div>
+            <input type="range" id="dm-dmg" min="0.5" max="3.0" step="0.1" value="1.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>CAD Ring Radius</span><strong id="val-dm-radius">2.2m</strong></div>
+            <input type="range" id="dm-radius" min="1.2" max="4.5" step="0.1" value="2.2" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 15. Data Multiplier & Management App 4: Unified Data Vault -->
+    <section
+      id="win-data-vault"
+      class="os-window is-hidden"
+      style="top: 28px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Unified Data Vault"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">App 4 — Unified Data Vault (Cross-System Record Manager)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <select id="dv-filter-select" class="tool-select">
+            <option value="all">All Categories</option>
+            <option value="cad_assembly">CAD Assemblies</option>
+            <option value="fortress_loadout">Fortress Loadouts</option>
+            <option value="fortress_match">Match Telemetry</option>
+            <option value="multiplied_batch">Multiplied Batches</option>
+            <option value="pipeline_sync">Pipeline Syncs</option>
+          </select>
+          <input id="dv-search-input" type="text" class="tool-input" placeholder="Search records..." />
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="dv-btn-snapshot" class="tool-btn is-primary">Snapshot CAD + OS</button>
+          <button type="button" id="dv-btn-clone" class="tool-btn">Clone 2x</button>
+          <button type="button" id="dv-btn-delete" class="tool-btn">Delete</button>
+          <a id="dv-btn-export" class="tool-btn" style="display:inline-flex;align-items:center;text-decoration:none;">Export JSON</a>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="dv-status">Unified storage across CAD, Team Fortress, Triad, and Multiplier batches.</span>
+      </div>
+      <div class="studio-split">
+        <div class="win-body">
+          <div id="dv-record-list" class="log-scroll" style="max-height: none;"></div>
+        </div>
+        <aside class="studio-sidebar">
+          <div style="font-size:12px;font-weight:600;">Record Payload Inspector</div>
+          <textarea id="dv-editor" class="code-area" style="flex:1;"></textarea>
+          <button type="button" id="dv-btn-save-edit" class="tool-btn is-primary">Validate &amp; Save Edit</button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 16. Data Management App 5: Pipeline & Telemetry Router -->
+    <section
+      id="win-pipeline"
+      class="os-window is-hidden"
+      style="top: 30px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Pipeline and Telemetry Router"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">App 5 — Pipeline &amp; Telemetry Router (Full OS Bus)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <button type="button" id="pl-btn-sync-all" class="tool-btn is-primary">Broadcast Full System Sync</button>
+          <button type="button" class="tool-btn" data-open-window="win-fortress">Open Team Fortress</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="pl-status">Connects Pattern Guard, Semantic Synth, Data Multiplier, Data Vault, Triad &amp; Team Fortress 3D.</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="pl-canvas" width="760" height="400"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div style="font-size:12px;font-weight:600;">Active Cross-System Routes</div>
+          <label class="control-label" style="cursor:pointer;"><span>Pattern Guard Auto-Heal</span><input type="checkbox" id="pl-route-guard" checked /></label>
+          <label class="control-label" style="cursor:pointer;"><span>CAD → Fortress Monument</span><input type="checkbox" id="pl-route-cad" checked /></label>
+          <label class="control-label" style="cursor:pointer;"><span>Shader Lab → Fortress Skins</span><input type="checkbox" id="pl-route-shader" checked /></label>
+          <label class="control-label" style="cursor:pointer;"><span>Sonic Synth → Combat Tempo</span><input type="checkbox" id="pl-route-sonic" checked /></label>
+          <label class="control-label" style="cursor:pointer;"><span>Multiplier → Bot Squads</span><input type="checkbox" id="pl-route-mult" checked /></label>
+          <label class="control-label" style="cursor:pointer;"><span>World Forge → Arena Gravity</span><input type="checkbox" id="pl-route-world" checked /></label>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 17. Titanfall 2 — Frontier Drop (Full Parkour, 7 Titans, Grapple, Rodeo, Attrition) -->
+    <section
+      id="win-titanfall"
+      class="os-window is-hidden"
+      style="top: 10px; left: max(12px, calc(50% - 510px)); width: min(1020px, calc(100vw - 24px)); height: min(660px, calc(100vh - 125px));"
+      aria-label="Titanfall 2 Frontier Drop"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Titanfall 2 — Frontier Drop (7 Titans · Wallrun · Grapple · Rodeo)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="tf2-titan-select" class="tool-select" aria-label="Titan Chassis">
+            <option value="vanguard">Titan: BT-7274 (Monarch)</option>
+            <option value="ion">Titan: Ion (Vortex/Laser)</option>
+            <option value="scorch">Titan: Scorch (Thermite)</option>
+            <option value="northstar">Titan: Northstar (Railgun/VTOL)</option>
+            <option value="ronin">Titan: Ronin (Sword/Phase)</option>
+            <option value="tone">Titan: Tone (40mm/Wall)</option>
+            <option value="legion">Titan: Legion (Smart Minigun)</option>
+          </select>
+          <select id="tf2-tact-select" class="tool-select" aria-label="Pilot Tactical">
+            <option value="grapple">Tactical: Grapple Hook</option>
+            <option value="stim">Tactical: Stim Boost</option>
+            <option value="phase">Tactical: Phase Shift</option>
+            <option value="cloak">Tactical: Optical Cloak</option>
+            <option value="holo">Tactical: Holo Pilot</option>
+          </select>
+          <select id="tf2-weapon-select" class="tool-select" aria-label="Pilot Weapon">
+            <option value="r201">R-201 Carbine</option>
+            <option value="eva8">EVA-8 Auto</option>
+            <option value="epg1">EPG-1 Plasma</option>
+            <option value="kraber">Kraber-AP Sniper</option>
+            <option value="smart_pistol">Smart Pistol Mk6</option>
+            <option value="archer">Archer AT Rocket</option>
+          </select>
+          <select id="tf2-skin-select" class="tool-select" aria-label="Chassis Skin">
+            <option value="srs_bt7274">Skin: BT-7274 SRS</option>
+            <option value="imc_factory">Skin: IMC Issue</option>
+            <option value="apex_predators">Skin: Apex Predators</option>
+            <option value="six_four">Skin: The 6-4 Elite</option>
+            <option value="stoic_black">Skin: Stoic Obsidian</option>
+            <option value="gold_prime">Skin: Prime Gold</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="tf2-btn-sticks" class="tool-btn">Dual Sticks</button>
+          <button type="button" id="tf2-btn-sync" class="tool-btn">Sync Sentient</button>
+          <button type="button" id="tf2-btn-start" class="tool-btn is-primary">Drop In</button>
+        </div>
+      </div>
+
+      <div class="mario-hud">
+        <div class="hud-items">
+          <span>Unit <strong id="tf2-hud-unit">PILOT</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>HP <strong id="tf2-hud-hp">100/100</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Ammo <strong id="tf2-hud-ammo">28/28</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Tact <strong id="tf2-hud-tact">READY</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Titan <strong id="tf2-hud-meter">65%</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Core <strong id="tf2-hud-core">0%</strong></span>
+        </div>
+        <div class="hud-items">
+          <span>SRS <strong id="tf2-hud-militia">0</strong></span>
+          <span>vs</span>
+          <span>IMC <strong id="tf2-hud-imc">0</strong></span>
+          <span aria-hidden="true">·</span>
+          <span>Battery <strong id="tf2-hud-bat">NONE</strong></span>
+        </div>
+      </div>
+
+      <div id="tf2-viewport">
+        <canvas id="tf2-canvas"></canvas>
+        <div id="tf2-crosshair" class="tf-crosshair"></div>
+        <div id="tf2-scope-ring" class="tf-scope-ring is-hidden"></div>
+        <div id="tf2-smart-locks"></div>
+        <div id="tf2-prompt-banner" class="tf2-prompt-banner is-hidden"></div>
+        <div id="tf2-killfeed" class="tf-killfeed"></div>
+
+        <div id="tf2-overlay-menu" class="game-overlay">
+          <h2>Titanfall 2 — Frontier Drop</h2>
+          <p>Wallrun &amp; double-jump across chevron corridors, sling with the 3D Grapple tether, rodeo enemy Titans to rip green batteries, call orbital Titanfall (V), embark (F), unleash 7 unique Cores (C), and survive Dropship Evac.</p>
+          <div class="overlay-actions">
+            <button type="button" id="tf2-btn-play-now" class="btn-action-primary">Stand By for Titanfall</button>
+            <button type="button" id="tf2-btn-play-mobile" class="btn-action-secondary">Play with Dual Thumbsticks</button>
+          </div>
+          <div class="controls-hint">Move: WASD · Jump/Wallkick/Dash: Space · Slide: Shift/C · Tact/Ord: Q · Titanfall: V · Embark/Exit: F · Shield: G/RMB · Core: Z · Eject: X</div>
+        </div>
+
+        <div id="tf2-dual-stick" class="tf-dual-stick is-hidden">
+          <div class="stick-cluster">
+            <div id="tf2-stick-left" class="thumbstick-base" data-label="MOVE">
+              <div id="tf2-knob-left" class="thumbstick-knob"></div>
+            </div>
+            <div class="arcade-action-col">
+              <button type="button" id="tf2-pad-slide" class="arcade-pad-btn">SLIDE</button>
+              <button type="button" id="tf2-pad-titan" class="arcade-pad-btn is-jump-btn">TITAN</button>
+            </div>
+          </div>
+          <div class="stick-cluster">
+            <div class="arcade-action-col">
+              <button type="button" id="tf2-pad-jump" class="arcade-pad-btn is-jump-btn">JUMP</button>
+              <button type="button" id="tf2-pad-tact" class="arcade-pad-btn is-fire-btn">TACT</button>
+              <button type="button" id="tf2-pad-core" class="arcade-pad-btn">CORE</button>
+            </div>
+            <div id="tf2-stick-right" class="thumbstick-base" data-label="AIM FIRE">
+              <div id="tf2-knob-right" class="thumbstick-knob is-fire"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 18. Sentient App 1: Neural Architect Core -->
+    <section
+      id="win-sentient-architect"
+      class="os-window is-hidden"
+      style="top: 18px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Sentient Architect Core"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Sentient Network 1 — Neural Architect Core (5-Agent Bus)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <input id="sa-prompt-input" type="text" class="tool-input" placeholder="Co-design a full Titanfall / Arena spec (e.g. 'Scorch Volcanic Refinery with fast wallruns')..." />
+          <button type="button" id="sa-btn-design" class="tool-btn is-primary">Autonomous Co-Design</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" class="tool-btn" data-open-window="win-titanfall">Open Titanfall 2</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="sa-status">5 Sentient Agents co-design Skins, Rigs, Physics &amp; AI across all games in real time.</span>
+      </div>
+      <div class="matrix-stage-wrap">
+        <canvas id="sa-canvas" width="900" height="440"></canvas>
+      </div>
+    </section>
+
+    <!-- 19. Sentient App 2: PBR Skin & Decal Foundry -->
+    <section
+      id="win-sentient-skins"
+      class="os-window is-hidden"
+      style="top: 22px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Sentient Skin Foundry"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Sentient Network 2 — Procedural PBR Skin &amp; Decal Foundry</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="sf-preset-select" class="tool-select">
+            <option value="srs_bt7274">BT-7274 SRS Vanguard</option>
+            <option value="imc_factory">IMC Standard Issue</option>
+            <option value="apex_predators">Apex Predators</option>
+            <option value="six_four">The 6-4 Elite</option>
+            <option value="stoic_black">Stoic Dark Obsidian</option>
+            <option value="gold_prime">Prime Australium Gold</option>
+          </select>
+          <input id="sf-stencil-input" type="text" class="tool-input" value="BT-7274" style="min-width:110px;max-width:140px;" />
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="sf-btn-push" class="tool-btn is-primary">Push Skins to All Games</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="sf-status">Forges CanvasTexture PBR armor plates, rivets, hazard stripes &amp; stencils live onto Titanfall 2 &amp; TF3D.</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="sf-canvas" width="680" height="420"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-label"><span>Primary Armor</span><input type="color" id="sf-col-primary" value="#4b5d3b" /></div>
+          <div class="control-label"><span>Secondary Band</span><input type="color" id="sf-col-secondary" value="#e2e8f0" /></div>
+          <div class="control-label"><span>Hazard Stripe</span><input type="color" id="sf-col-accent" value="#f97316" /></div>
+          <div class="control-label"><span>Optic Visor</span><input type="color" id="sf-col-visor" value="#38bdf8" /></div>
+          <div class="control-row">
+            <div class="control-label"><span>Metalness</span><strong id="val-sf-metal">65%</strong></div>
+            <input type="range" id="sf-metal" min="0.1" max="0.98" step="0.02" value="0.65" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Roughness</span><strong id="val-sf-rough">35%</strong></div>
+            <input type="range" id="sf-rough" min="0.08" max="0.95" step="0.02" value="0.35" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Battle Wear</span><strong id="val-sf-wear">35%</strong></div>
+            <input type="range" id="sf-wear" min="0" max="1" step="0.05" value="0.35" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 20. Sentient App 3: Articulated Rig & CAD Modeler -->
+    <section
+      id="win-sentient-rig"
+      class="os-window is-hidden"
+      style="top: 24px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Sentient Rig Modeler"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Sentient Network 3 — Articulated Rig &amp; Chassis Blueprint</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="sr-titan-select" class="tool-select">
+            <option value="vanguard">Vanguard (BT-7274)</option>
+            <option value="ion">Ion (Atlas)</option>
+            <option value="scorch">Scorch (Ogre)</option>
+            <option value="northstar">Northstar (Stryder)</option>
+            <option value="ronin">Ronin (Stryder)</option>
+            <option value="tone">Tone (Atlas)</option>
+            <option value="legion">Legion (Ogre)</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="sr-btn-push" class="tool-btn is-primary">Export Rig to Liquid CAD + Titanfall 2</button>
+        </div>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="sr-canvas" width="760" height="420"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Armor Scale</span><strong id="val-sr-scale">1.05x</strong></div>
+            <input type="range" id="sr-scale" min="0.8" max="1.4" step="0.02" value="1.05" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Weapon Bore</span><strong id="val-sr-bore">1.00x</strong></div>
+            <input type="range" id="sr-bore" min="0.7" max="1.6" step="0.05" value="1.0" />
+          </div>
+          <div class="control-label"><span>Pod Accent</span><input type="color" id="sr-accent" value="#f97316" /></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 21. Sentient App 4: Parkour & Ballistic Physics Kernel -->
+    <section
+      id="win-sentient-physics"
+      class="os-window is-hidden"
+      style="top: 26px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Sentient Physics Kernel"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Sentient Network 4 — Wallrun, Slide-Hop &amp; Grapple Physics Kernel</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="sp-canvas" width="760" height="420"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Wallrun Speed</span><strong id="val-sp-wall">17.5 u/s</strong></div>
+            <input type="range" id="sp-wall" min="12" max="28" step="0.5" value="17.5" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Slide Boost</span><strong id="val-sp-slide">18.5 u/s</strong></div>
+            <input type="range" id="sp-slide" min="12" max="28" step="0.5" value="18.5" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Air-Strafe Accel</span><strong id="val-sp-air">14.0</strong></div>
+            <input type="range" id="sp-air" min="6" max="24" step="0.5" value="14.0" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Grapple Winch Pull</span><strong id="val-sp-grapple">44.0</strong></div>
+            <input type="range" id="sp-grapple" min="25" max="75" step="1" value="44" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Arena Gravity</span><strong id="val-sp-grav">32 m/s²</strong></div>
+            <input type="range" id="sp-grav" min="20" max="48" step="1" value="32" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 22. Sentient App 5: Frontier AI Wave Director -->
+    <section
+      id="win-sentient-director"
+      class="os-window is-hidden"
+      style="top: 28px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Sentient AI Director"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Sentient Network 5 — Autonomous Frontier AI Wave Director</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <button type="button" id="sd-btn-drop-player" class="tool-btn is-primary">Call Orbital Titanfall Now</button>
+          <button type="button" id="sd-btn-drop-imc" class="tool-btn">Drop Hostile Ronin Titan</button>
+          <button type="button" id="sd-btn-drop-scorch" class="tool-btn">Drop Hostile Scorch Titan</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" class="tool-btn" data-open-window="win-titanfall">Jump to Titanfall 2</button>
+        </div>
+      </div>
+      <div class="matrix-stage-wrap">
+        <canvas id="sd-canvas" width="900" height="440"></canvas>
+      </div>
+    </section>
+
+    <!-- 23. Single-Input Hyper-Awareness Matrix ("Thought Cloud") -->
+    <section
+      id="win-thought-cloud"
+      class="os-window is-hidden"
+      style="top: 16px; left: max(16px, calc(50% - 480px)); width: min(960px, calc(100vw - 32px)); height: min(635px, calc(100vh - 135px));"
+      aria-label="Hyper-Awareness Thought Cloud"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Hyper-Awareness Matrix — Thought Cloud (Single Input Game Alterer)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group" style="flex: 1;">
+          <input id="tc-prompt-input" type="text" class="tool-input" placeholder="Enter one thought to alter all playing games live (e.g. 'zero gravity neon cyber matrix with infinite jumps')..." />
+          <button type="button" id="tc-btn-alter" class="tool-btn is-primary">Alter Active Games</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" class="tool-btn" data-open-window="win-titanfall">Titanfall 2</button>
+          <button type="button" class="tool-btn" data-open-window="win-fortress">Fortress</button>
+          <button type="button" class="tool-btn" data-open-window="win-mario">Mario</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="tc-status">Reads live OS awareness &amp; mutates rules, gravity, time-scale, weapons, lighting &amp; arenas mid-match.</span>
+        <div id="tc-seed-bar" class="toolbar-group"></div>
+      </div>
+      <div class="matrix-stage-wrap">
+        <canvas id="tc-canvas" width="900" height="440"></canvas>
+      </div>
+    </section>
+
+    <!-- 24. Level Forge 1: Frontier Wallrun Sector Architect (Titanfall 2) -->
+    <section
+      id="win-level-frontier"
+      class="os-window is-hidden"
+      style="top: 20px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Frontier Level Architect"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Level Forge 1 — Frontier Wallrun Sector Architect (Titanfall 2)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="lf-fr-arch" class="tool-select">
+            <option value="angel_city">Archetype: Angel City</option>
+            <option value="boomtown">Archetype: Boomtown Foundry</option>
+            <option value="glitch">Archetype: Glitch Sim Matrix</option>
+            <option value="forwardbase">Archetype: Forwardbase Kodai</option>
+            <option value="colony">Archetype: Emerald Colony Spire</option>
+          </select>
+          <button type="button" id="lf-fr-btn-random" class="tool-btn">New Seed</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="lf-fr-btn-deploy" class="tool-btn is-primary">Deploy Live to Titanfall 2</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="lf-fr-status">Procedural wallrun lane &amp; rooftop blueprint synced with Titanfall 2 &amp; Data Vault.</span>
+        <span id="lf-fr-seed" style="font-family:var(--font-mono);">Seed #2077</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="lf-frontier-canvas" width="700" height="440"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Wallrun Corridor Density</span><strong id="val-lf-fr-dens">0.70</strong></div>
+            <input type="range" id="lf-fr-density" min="0.25" max="1.0" step="0.05" value="0.70" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Tower Verticality</span><strong id="val-lf-fr-vert">1.00x</strong></div>
+            <input type="range" id="lf-fr-vert" min="0.7" max="1.6" step="0.05" value="1.00" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Zip Jump Pads</span><strong id="val-lf-fr-pads">6</strong></div>
+            <input type="range" id="lf-fr-pads" min="2" max="8" step="1" value="6" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Green Batteries</span><strong id="val-lf-fr-bats">4</strong></div>
+            <input type="range" id="lf-fr-bats" min="2" max="6" step="1" value="4" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 25. Level Forge 2: Fortress Symmetric Map Builder (Team Fortress 3D) -->
+    <section
+      id="win-level-fortress"
+      class="os-window is-hidden"
+      style="top: 24px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Fortress Map Forge"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Level Forge 2 — Symmetric Fortress Map Builder (Team Fortress 3D)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="lf-tf-arch" class="tool-select">
+            <option value="2fort">Map: 2Fort Twin Bridge</option>
+            <option value="badlands">Map: Badlands Spire</option>
+            <option value="dustbowl">Map: Dustbowl Canyon</option>
+            <option value="upward">Map: Upward Cliffside</option>
+            <option value="nucleus">Map: Nucleus Core Pit</option>
+          </select>
+          <button type="button" id="lf-tf-btn-random" class="tool-btn">New Seed</button>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="lf-tf-btn-deploy" class="tool-btn is-primary">Deploy Live to Team Fortress 3D</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="lf-tf-status">Generates mirrored RED/BLU battlements, outcrops, jump pads &amp; pickups cleanly.</span>
+        <span id="lf-tf-seed" style="font-family:var(--font-mono);">Seed #4410</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="lf-fortress-canvas" width="700" height="440"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Symmetric Mid Cover</span><strong id="val-lf-tf-cov">0.65</strong></div>
+            <input type="range" id="lf-tf-cover" min="0.2" max="1.0" step="0.05" value="0.65" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Battlement Elevation</span><strong id="val-lf-tf-elev">1.00x</strong></div>
+            <input type="range" id="lf-tf-elev" min="0.7" max="1.6" step="0.05" value="1.00" />
+          </div>
+          <div class="control-row">
+            <div class="control-label"><span>Jump Pads</span><strong id="val-lf-tf-pads">4</strong></div>
+            <input type="range" id="lf-tf-pads" min="2" max="6" step="1" value="4" />
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 26. Level Forge 3: Cross-Biome Level Cross-Synthesizer -->
+    <section
+      id="win-level-biome"
+      class="os-window is-hidden"
+      style="top: 28px; left: max(18px, calc(50% - 480px)); width: min(960px, calc(100vw - 36px)); height: min(630px, calc(100vh - 140px));"
+      aria-label="Cross-Biome Level Synthesizer"
+    >
+      <div class="os-win-header">
+        <span class="os-win-title">Level Forge 3 — Cross-Biome Synthesizer (All Games + CAD + Matrix)</span>
+        <div class="os-win-actions">
+          <button type="button" class="win-ctrl-btn" data-win-action="minimize" title="Minimize">_</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="maximize" title="Maximize">□</button>
+          <button type="button" class="win-ctrl-btn" data-win-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="mario-toolbar">
+        <div class="toolbar-group">
+          <select id="lf-bm-select" class="tool-select">
+            <option value="cyber_matrix">Biome: Cyber Matrix Grid</option>
+            <option value="volcanic_foundry">Biome: Solar Volcanic Foundry</option>
+            <option value="orbital_void">Biome: Zero-G Orbital Void</option>
+            <option value="emerald_colony">Biome: Bio-Emerald Canopy</option>
+            <option value="arctic_glass">Biome: Cryo Arctic Citadel</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="lf-bm-btn-sync" class="tool-btn is-primary">Synthesize Levels Across All Games</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span id="lf-bm-status">Cross-synchronizes Titanfall 2, Team Fortress 3D, Super Mario, Liquid CAD &amp; Matrix simultaneously.</span>
+      </div>
+      <div class="studio-split">
+        <div class="matrix-stage-wrap">
+          <canvas id="lf-biome-canvas" width="700" height="440"></canvas>
+        </div>
+        <aside class="studio-sidebar">
+          <div class="control-row">
+            <div class="control-label"><span>Structural Complexity</span><strong id="val-lf-bm-chaos">0.55</strong></div>
+            <input type="range" id="lf-bm-chaos" min="0.2" max="1.0" step="0.05" value="0.55" />
+          </div>
+          <button type="button" class="tool-btn" data-open-window="win-thought-cloud">Open Thought Cloud</button>
+          <button type="button" class="tool-btn" data-open-window="win-titanfall">Open Titanfall 2</button>
+          <button type="button" class="tool-btn" data-open-window="win-fortress">Open Team Fortress</button>
+          <button type="button" class="tool-btn" data-open-window="win-mario">Open Super Mario</button>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <!-- Dedicated Full-Screen Dual-Thumbstick Mobile Arcade Shell -->
+  <div id="mobile-arcade-shell" class="is-hidden" aria-label="Full Screen Mobile Arcade">
+    <div class="arcade-topbar">
+      <div class="arcade-hud-row">
+        <span>SCR <strong id="arc-score">000000</strong></span>
+        <span aria-hidden="true">·</span>
+        <span>COINS <strong id="arc-coins">00</strong></span>
+        <span aria-hidden="true">·</span>
+        <span><strong id="arc-world">1-1</strong></span>
+        <span aria-hidden="true">·</span>
+        <span>HEAT</span>
+        <div class="heat-track"><div id="arc-heat-fill"></div></div>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" id="arc-btn-mode" class="tool-btn">3D Mode</button>
+        <button type="button" id="arc-btn-pause" class="tool-btn">Pause</button>
+        <button type="button" id="arc-btn-exit" class="tool-btn is-primary">Exit</button>
+      </div>
+    </div>
+    <div id="mobile-arcade-stage-slot"></div>
+  </div>
+
+  <nav class="os-dock" aria-label="Application Dock">
+    <button type="button" class="dock-btn" data-dock-target="win-thought-cloud">Thought Cloud</button>
+    <button type="button" class="dock-btn" data-dock-target="win-level-frontier">Frontier Forge</button>
+    <button type="button" class="dock-btn" data-dock-target="win-level-fortress">Fortress Forge</button>
+    <button type="button" class="dock-btn" data-dock-target="win-level-biome">Biome Sync</button>
+    <button type="button" class="dock-btn" data-dock-target="win-titanfall">Titanfall 2</button>
+    <button type="button" class="dock-btn" data-dock-target="win-fortress">Team Fortress</button>
+    <button type="button" class="dock-btn" data-dock-target="win-sentient-architect">Sentient Net</button>
+    <button type="button" class="dock-btn" data-dock-target="win-sentient-skins">Skin Foundry</button>
+    <button type="button" class="dock-btn" data-dock-target="win-sentient-rig">Rig Modeler</button>
+    <button type="button" class="dock-btn" data-dock-target="win-sentient-physics">Physics Kernel</button>
+    <button type="button" class="dock-btn" data-dock-target="win-sentient-director">AI Director</button>
+    <button type="button" class="dock-btn is-open" data-dock-target="win-mario">Super Mario</button>
+    <button type="button" class="dock-btn" data-dock-target="win-guard">Pattern Guard</button>
+    <button type="button" class="dock-btn" data-dock-target="win-synth-fallback">CAD Synth</button>
+    <button type="button" class="dock-btn" data-dock-target="win-data-mult">Multiplier</button>
+    <button type="button" class="dock-btn" data-dock-target="win-data-vault">Data Vault</button>
+    <button type="button" class="dock-btn" data-dock-target="win-pipeline">Pipeline</button>
+    <button type="button" class="dock-btn" data-dock-target="win-triad-world">World Forge</button>
+    <button type="button" class="dock-btn" data-dock-target="win-triad-shader">Shader Lab</button>
+    <button type="button" class="dock-btn" data-dock-target="win-triad-sonic">Sonic Synth</button>
+    <button type="button" class="dock-btn" data-dock-target="win-cad">Liquid CAD</button>
+    <button type="button" class="dock-btn" data-dock-target="win-movement">Movement</button>
+    <button type="button" class="dock-btn" data-dock-target="win-scene">Scene</button>
+    <button type="button" class="dock-btn" data-dock-target="win-matrix">Matrix</button>
+    <button type="button" class="dock-btn" data-dock-target="win-text2movie">Text to Movie</button>
+    <button type="button" class="dock-btn" data-dock-target="win-video">Video Studio</button>
+    <button type="button" class="dock-btn" data-dock-target="win-controls">Physics</button>
+    <button type="button" class="dock-btn" data-dock-target="win-audio">Audio</button>
+    <button type="button" class="dock-btn" data-dock-target="win-suite">AIM Suite</button>
+  </nav>
+
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>
